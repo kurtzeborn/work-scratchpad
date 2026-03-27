@@ -384,8 +384,8 @@ $reportLines += "This indicates the release was prepared on a branch rather than
 $reportLines += ""
 $reportLines += "## Release Branch Activity"
 $reportLines += ""
-$reportLines += "| # | PR | Release Branch | Package/Tag | Published | Prior Release | Days to Branch | Days to Ship |"
-$reportLines += "|---|-----|----------------|-------------|-----------|---------------|----------------|--------------|"
+$reportLines += "| # | PR | Days to Branch | Days to Ship | Release Branch | Package/Tag | Published | Prior Release |"
+$reportLines += "|---|-----|----------------|--------------|----------------|-------------|-----------|---------------|"
 
 # Build merged list: group hotfix releases by PR, then add unmatched PRs
 $unmatchedPRs = $releasePRs | Where-Object { -not $matchedPRs.ContainsKey($_.number) }
@@ -442,7 +442,7 @@ foreach ($row in $allRows) {
     $priorInfo = if ($row.PriorRelease) { "$($row.PriorRelease) ($($row.PriorReleaseDate))" } else { "" }
     $ageBranch = if ($null -ne $row.AgeAtBranch) { "$($row.AgeAtBranch)d" } else { "" }
     $ageShip = if ($null -ne $row.AgeAtShip) { "$($row.AgeAtShip)d" } else { "" }
-    $reportLines += "| $i | $prLink | ``$($row.BranchName)`` | $tagLink | $pubDate | $priorInfo | $ageBranch | $ageShip |"
+    $reportLines += "| $i | $prLink | $ageBranch | $ageShip | ``$($row.BranchName)`` | $tagLink | $pubDate | $priorInfo |"
 }
 
 $reportLines += "---"
