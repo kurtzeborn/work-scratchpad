@@ -78,7 +78,7 @@ Write-Host "Phase 1: Finding release branch PRs..." -ForegroundColor Cyan
 $releasePRs = @()
 foreach ($prefix in $BranchPrefixes) {
     $searchQuery = "head:$prefix merged:>$cutoffDate"
-    $prs = gh pr list --repo $Repo --state merged --search $searchQuery --limit 200 --json number,title,headRefName,mergedAt,mergeCommit 2>&1 | ConvertFrom-Json
+    $prs = gh pr list --repo $Repo --state merged --search $searchQuery --limit 200 --json number,title,headRefName,mergedAt,mergeCommit,createdAt 2>&1 | ConvertFrom-Json
     if ($prs) {
         $releasePRs += $prs
     }
@@ -277,8 +277,13 @@ foreach ($pr in $releasePRs) {
                 PRNumber      = $pr.number
                 PRTitle       = $pr.title
                 PRUrl         = "https://github.com/$Repo/pull/$($pr.number)"
+                PRCreatedAt   = $pr.createdAt
                 BranchName    = $pr.headRefName
                 CommitSHA     = if ($rel.tagCommit) { $rel.tagCommit.oid.Substring(0, 12) } else { "N/A" }
+                PriorRelease      = $null
+                PriorReleaseDate  = $null
+                AgeAtShip         = $null
+                AgeAtBranch       = $null
             }
             
             if (-not $matchedPRs.ContainsKey($pr.number)) {
@@ -294,7 +299,55 @@ foreach ($pr in $releasePRs) {
 }
 
 # ============================================================
-# PHASE 4: Output results
+# PHASE 4: Look up prior releases for age calculation
+# ============================================================
+Write-Host "Phase 4: Looking up prior releases for age calculation..." -ForegroundColor Cyan
+
+# Cache: packagePrefix -> sorted list of {name, date}
+$tagCache = @{}
+
+foreach ($hf in $hotfixReleases) {
+    # Extract package name from tag: "Azure.Identity_1.18.0" -> "Azure.Identity"
+    $packageName = $hf.Tag -replace '_[0-9].*$', ''
+    $tagPrefix = "${packageName}_"
+    
+    # Query tags for this package if not cached
+    if (-not $tagCache.ContainsKey($tagPrefix)) {
+        Write-Host "  Querying tags for $packageName..." -ForegroundColor DarkGray
+        $tagQuery = "{ repository(owner:""$owner"", name:""$repoName"") { refs(refPrefix:""refs/tags/"", query:""$tagPrefix"", last:50, orderBy:{field:TAG_COMMIT_DATE, direction:ASC}) { nodes { name target { ... on Commit { committedDate } } } } } }"
+        $tagResult = Invoke-GraphQL -Query $tagQuery
+        if ($tagResult -and $tagResult.data.repository.refs.nodes) {
+            $tagCache[$tagPrefix] = $tagResult.data.repository.refs.nodes | ForEach-Object {
+                [PSCustomObject]@{ Name = $_.name; Date = [datetime]$_.target.committedDate }
+            } | Sort-Object Date
+        } else {
+            $tagCache[$tagPrefix] = @()
+        }
+    }
+    
+    $tags = $tagCache[$tagPrefix]
+    $hotfixDate = [datetime]$hf.PublishedAt
+    
+    # Find the most recent tag BEFORE this hotfix release
+    $priorTag = $tags | Where-Object { $_.Name -ne $hf.Tag -and $_.Date -lt $hotfixDate } | Select-Object -Last 1
+    
+    if ($priorTag) {
+        $hf.PriorRelease = $priorTag.Name
+        $hf.PriorReleaseDate = $priorTag.Date.ToString("yyyy-MM-dd")
+        
+        # A: Gap from prior release to hotfix ship date
+        $hf.AgeAtShip = [math]::Round(($hotfixDate - $priorTag.Date).TotalDays)
+        
+        # B: Gap from prior release to PR creation (when someone decided to hotfix)
+        if ($hf.PRCreatedAt) {
+            $prCreated = [datetime]$hf.PRCreatedAt
+            $hf.AgeAtBranch = [math]::Round(($prCreated - $priorTag.Date).TotalDays)
+        }
+    }
+}
+
+# ============================================================
+# PHASE 5: Output results
 # ============================================================
 Write-Host ""
 Write-Host "Results:" -ForegroundColor Cyan
@@ -331,8 +384,8 @@ $reportLines += "This indicates the release was prepared on a branch rather than
 $reportLines += ""
 $reportLines += "## Release Branch Activity"
 $reportLines += ""
-$reportLines += "| # | PR | Release Branch | Package/Tag | Published |"
-$reportLines += "|---|-----|----------------|-------------|-----------|"
+$reportLines += "| # | PR | Release Branch | Package/Tag | Published | Prior Release | Days to Branch | Days to Ship |"
+$reportLines += "|---|-----|----------------|-------------|-----------|---------------|----------------|--------------|"
 
 # Build merged list: group hotfix releases by PR, then add unmatched PRs
 $unmatchedPRs = $releasePRs | Where-Object { -not $matchedPRs.ContainsKey($_.number) }
@@ -342,25 +395,33 @@ $allRows = @()
 
 foreach ($hf in $hotfixReleases) {
     $allRows += [PSCustomObject]@{
-        SortDate   = [datetime]$hf.PublishedAt
-        PRNumber   = $hf.PRNumber
-        PRUrl      = $hf.PRUrl
-        BranchName = $hf.BranchName
-        Tag        = $hf.Tag
-        ReleaseUrl = $hf.ReleaseUrl
-        Published  = ([datetime]$hf.PublishedAt).ToString("yyyy-MM-dd")
+        SortDate        = [datetime]$hf.PublishedAt
+        PRNumber        = $hf.PRNumber
+        PRUrl           = $hf.PRUrl
+        BranchName      = $hf.BranchName
+        Tag             = $hf.Tag
+        ReleaseUrl      = $hf.ReleaseUrl
+        Published       = ([datetime]$hf.PublishedAt).ToString("yyyy-MM-dd")
+        PriorRelease    = $hf.PriorRelease
+        PriorReleaseDate = $hf.PriorReleaseDate
+        AgeAtBranch     = $hf.AgeAtBranch
+        AgeAtShip       = $hf.AgeAtShip
     }
 }
 
 foreach ($pr in $unmatchedPRs) {
     $allRows += [PSCustomObject]@{
-        SortDate   = [datetime]$pr.mergedAt
-        PRNumber   = $pr.number
-        PRUrl      = "https://github.com/$Repo/pull/$($pr.number)"
-        BranchName = $pr.headRefName
-        Tag        = $null
-        ReleaseUrl = $null
-        Published  = $null
+        SortDate        = [datetime]$pr.mergedAt
+        PRNumber        = $pr.number
+        PRUrl           = "https://github.com/$Repo/pull/$($pr.number)"
+        BranchName      = $pr.headRefName
+        Tag             = $null
+        ReleaseUrl      = $null
+        Published       = $null
+        PriorRelease    = $null
+        PriorReleaseDate = $null
+        AgeAtBranch     = $null
+        AgeAtShip       = $null
     }
 }
 
@@ -378,7 +439,10 @@ foreach ($row in $allRows) {
         $tagLink = ""
         $pubDate = ""
     }
-    $reportLines += "| $i | $prLink | ``$($row.BranchName)`` | $tagLink | $pubDate |"
+    $priorInfo = if ($row.PriorRelease) { "$($row.PriorRelease) ($($row.PriorReleaseDate))" } else { "" }
+    $ageBranch = if ($null -ne $row.AgeAtBranch) { "$($row.AgeAtBranch)d" } else { "" }
+    $ageShip = if ($null -ne $row.AgeAtShip) { "$($row.AgeAtShip)d" } else { "" }
+    $reportLines += "| $i | $prLink | ``$($row.BranchName)`` | $tagLink | $pubDate | $priorInfo | $ageBranch | $ageShip |"
 }
 
 $reportLines += "---"
