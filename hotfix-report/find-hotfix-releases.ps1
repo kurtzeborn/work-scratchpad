@@ -338,6 +338,17 @@ foreach ($pr in $releasePRs) {
     }
 }
 
+# Compute branch start date: earliest release published from each branch
+# This is a proxy for when the release branch was created/first used
+$branchStartDates = @{}
+foreach ($hf in $hotfixReleases) {
+    $branch = $hf.BranchName
+    $pubDate = [datetime]$hf.PublishedAt
+    if (-not $branchStartDates.ContainsKey($branch) -or $pubDate -lt $branchStartDates[$branch]) {
+        $branchStartDates[$branch] = $pubDate
+    }
+}
+
 # ============================================================
 # PHASE 4: Look up prior releases for age calculation
 # ============================================================
@@ -378,10 +389,14 @@ foreach ($hf in $hotfixReleases) {
         # A: Gap from prior release to hotfix ship date
         $hf.AgeAtShip = [math]::Round(($hotfixDate - $priorTag.Date).TotalDays)
         
-        # B: Gap from prior release to PR creation (when someone decided to hotfix)
-        if ($hf.PRCreatedAt) {
-            $prCreated = [datetime]$hf.PRCreatedAt
-            $hf.AgeAtBranch = [math]::Round(($prCreated - $priorTag.Date).TotalDays)
+        # B: Gap from prior release to branch start (earliest release from this branch)
+        #    This tells us how old the prior release was when hotfix work began
+        #    If prior release postdates branch start (e.g., a later release from the same branch),
+        #    cap at 0 — the branch was already active
+        $branchStart = $branchStartDates[$hf.BranchName]
+        if ($branchStart) {
+            $gap = [math]::Round(($branchStart - $priorTag.Date).TotalDays)
+            $hf.AgeAtBranch = [math]::Max(0, $gap)
         }
     }
 }
