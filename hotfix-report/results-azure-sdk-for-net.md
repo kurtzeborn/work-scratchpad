@@ -2,9 +2,9 @@
 
 **Repository:** [Azure/azure-sdk-for-net](https://github.com/Azure/azure-sdk-for-net)
 **Date Range:** 2025-03-27 to 2026-03-27
-**Total Releases in Period:** 323
+**Total Releases in Period:** 753
 **Release Branch PRs Found:** 21
-**Hotfix Releases Matched:** 16
+**Hotfix Releases Matched:** 24
 
 ## Method
 
@@ -31,14 +31,15 @@ This indicates the release was prepared on a branch rather than directly on `mai
 | 14 | [#56484](https://github.com/Azure/azure-sdk-for-net/pull/56484) | 98d | 93d | `release/Azure.Identity_1.18.0` | [Azure.Identity_1.18.0-beta.3](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.Identity_1.18.0-beta.3) | 2026-02-20 | Azure.Identity_1.18.0-beta.2 (2025-11-19) |
 | 15 | [#56550](https://github.com/Azure/azure-sdk-for-net/pull/56550) | 108d | 79d | `release/Azure.Data.AppConfiguration_1.9.0` | [Azure.Data.AppConfiguration_1.8.0](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.Data.AppConfiguration_1.8.0) | 2026-01-29 | Azure.Data.AppConfiguration_1.7.0 (2025-11-10) |
 | 16 | [#54199](https://github.com/Azure/azure-sdk-for-net/pull/54199) | 162d | 168d | `release/202511_fix` | [Azure.ResourceManager.DataFactory_1.11.0](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.ResourceManager.DataFactory_1.11.0) | 2025-12-04 | Azure.ResourceManager.DataFactory_1.9.0 (2025-06-19) |
-| 17 | [#53052](https://github.com/Azure/azure-sdk-for-net/pull/53052) |  |  | `release/Azure.AI.Projects-1.0.0` |  |  |  |
+| 17 | [#53052](https://github.com/Azure/azure-sdk-for-net/pull/53052) | 48d | 42d | `release/Azure.AI.Projects-1.0.0` | [Azure.AI.Projects_1.0.0](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.AI.Projects_1.0.0) | 2025-10-01 | Azure.AI.Projects_1.0.0-beta.11 (2025-08-20) |
 | 18 | [#52927](https://github.com/Azure/azure-sdk-for-net/pull/52927) |  |  | `release/storage/stg99` |  |  |  |
-| 19 | [#51808](https://github.com/Azure/azure-sdk-for-net/pull/51808) |  |  | `release/azure-communication-phone-numbers_1.5.0` |  |  |  |
-| 20 | [#50415](https://github.com/Azure/azure-sdk-for-net/pull/50415) |  |  | `release/202506` |  |  |  |
-| 21 | [#50312](https://github.com/Azure/azure-sdk-for-net/pull/50312) |  |  | `release/azure-communication-phone-numbers-1.4.0` |  |  |  |
-| 22 | [#50343](https://github.com/Azure/azure-sdk-for-net/pull/50343) |  |  | `release/azure-communication-common/1.4.0` |  |  |  |
-| 23 | [#50169](https://github.com/Azure/azure-sdk-for-net/pull/50169) |  |  | `release/azure-communication-phone-numbers-1.3.1-beta.1` |  |  |  |
-| 24 | [#49669](https://github.com/Azure/azure-sdk-for-net/pull/49669) |  |  | `release/202504` |  |  |  |
-| 25 | [#49132](https://github.com/Azure/azure-sdk-for-net/pull/49132) |  |  | `release/azure-communication-common/1.4.0-beta.1` |  |  |  |
+| 19 | [#51808](https://github.com/Azure/azure-sdk-for-net/pull/51808) | 10d | 31d | `release/azure-communication-phone-numbers_1.5.0` | [Azure.Communication.PhoneNumbers_1.5.0](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.Communication.PhoneNumbers_1.5.0) | 2025-08-28 | Azure.Communication.PhoneNumbers_1.5.0-beta.2 (2025-07-28) |
+| 20 | [#51808](https://github.com/Azure/azure-sdk-for-net/pull/51808) | 16d | 9d | `release/azure-communication-phone-numbers_1.5.0` | [Azure.Communication.PhoneNumbers_1.5.0-beta.2](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.Communication.PhoneNumbers_1.5.0-beta.2) | 2025-07-31 | Azure.Communication.PhoneNumbers_1.5.0-beta.1 (2025-07-22) |
+| 21 | [#50415](https://github.com/Azure/azure-sdk-for-net/pull/50415) | 28d | 43d | `release/202506` | [Azure.ResourceManager.DataFactory_1.9.0](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.ResourceManager.DataFactory_1.9.0) | 2025-06-19 | Azure.ResourceManager.DataFactory_1.8.0 (2025-05-07) |
+| 22 | [#50343](https://github.com/Azure/azure-sdk-for-net/pull/50343) | 58d | 64d | `release/azure-communication-common/1.4.0` | [Azure.Communication.Common_1.4.0](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.Communication.Common_1.4.0) | 2025-06-04 | Azure.Communication.Common_1.4.0-beta.1 (2025-04-02) |
+| 23 | [#50312](https://github.com/Azure/azure-sdk-for-net/pull/50312) | 106d | 99d | `release/azure-communication-phone-numbers-1.4.0` | [Azure.Communication.PhoneNumbers_1.4.0-beta.1](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.Communication.PhoneNumbers_1.4.0-beta.1) | 2025-05-21 | Azure.Communication.PhoneNumbers_1.3.0 (2025-02-11) |
+| 24 | [#50169](https://github.com/Azure/azure-sdk-for-net/pull/50169) |  |  | `release/azure-communication-phone-numbers-1.3.1-beta.1` |  |  |  |
+| 25 | [#49669](https://github.com/Azure/azure-sdk-for-net/pull/49669) | 45d | 54d | `release/202504` | [Azure.ResourceManager.DataFactory_1.8.0](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.ResourceManager.DataFactory_1.8.0) | 2025-05-07 | Azure.ResourceManager.DataFactory_1.7.0 (2025-03-14) |
+| 26 | [#49132](https://github.com/Azure/azure-sdk-for-net/pull/49132) | 410d | 415d | `release/azure-communication-common/1.4.0-beta.1` | [Azure.Communication.Common_1.4.0-beta.1](https://github.com/Azure/azure-sdk-for-net/releases/tag/Azure.Communication.Common_1.4.0-beta.1) | 2025-04-02 | Azure.Communication.Common_1.3.0 (2024-02-12) |
 ---
-*Generated on 2026-03-27 10:56:36 UTC*
+*Generated on 2026-03-27 14:40:04 UTC*

@@ -25,4 +25,4 @@ This indicates the release was prepared on a branch rather than directly on `mai
 | 8 | [#41760](https://github.com/Azure/azure-sdk-for-python/pull/41760) |  |  | `release/1.5.0` |  |  |  |
 | 9 | [#41333](https://github.com/Azure/azure-sdk-for-python/pull/41333) |  |  | `release/azure-communication-phone-numbers-1.3.0` |  |  |  |
 ---
-*Generated on 2026-03-27 11:02:28 UTC*
+*Generated on 2026-03-27 14:40:27 UTC*
