@@ -126,16 +126,18 @@ while ($hasNextPage) {
     
     if (-not $nodes -or $nodes.Count -eq 0) { break }
     
-    $pastCutoff = $false
+    # Don't break on one past-cutoff release — CREATED_AT order may differ from publishedAt.
+    # Collect all releases on the page that are in range, and only stop pagination when
+    # ALL releases on the page are before cutoff.
+    $inRangeCount = 0
     foreach ($release in $nodes) {
-        if ($release.publishedAt -lt $cutoffISO) {
-            $pastCutoff = $true
-            break
+        if ($release.publishedAt -ge $cutoffISO) {
+            $allReleases += $release
+            $inRangeCount++
         }
-        $allReleases += $release
     }
     
-    if ($pastCutoff -or -not $pageInfo.hasNextPage) {
+    if ($inRangeCount -eq 0 -or -not $pageInfo.hasNextPage) {
         $hasNextPage = $false
     } else {
         $cursor = $pageInfo.endCursor
@@ -170,8 +172,15 @@ function Test-ReleaseMatchesPR {
     $prTitle = $PR.title
     
     # Extract package name from tag: "Azure.Something_1.2.3" -> "Azure.Something"
+    # Also handle Java format: "com.azure+azure-cosmos_4.79.0" -> artifact is "azure-cosmos"
     $tagPackage = $tagName -replace '_[0-9].*$', ''
     $tagVersion = if ($tagName -match '_(.+)$') { $Matches[1] } else { $null }
+    
+    # For Java-style tags with groupId+artifactId, extract the artifactId
+    $tagArtifact = $null
+    if ($tagPackage -match '\+(.+)$') {
+        $tagArtifact = $Matches[1]
+    }
     
     $searchSpace = "$prBranch $prTitle".ToLower()
     
@@ -194,6 +203,37 @@ function Test-ReleaseMatchesPR {
         $pattern = [regex]::Escape($variant) + '(?=[\s_\-/\d]|$)'
         if ($searchSpace -match $pattern) {
             return $true
+        }
+    }
+    
+    # Strategy 1b: Java artifact match - use artifactId from "groupId+artifactId" tags
+    # e.g., tag "com.azure.resourcemanager+azure-resourcemanager-containerservice_2.58.0"
+    #   -> artifact "azure-resourcemanager-containerservice"
+    #   -> matches branch "release/azure-resourcemanager-containerservice/2.58.0-beta.2"
+    if ($tagArtifact) {
+        $artifactLower = $tagArtifact.ToLower()
+        $artifactSlashed = $artifactLower -replace '-', '/'
+        foreach ($variant in @($artifactLower, $artifactSlashed)) {
+            $pattern = [regex]::Escape($variant) + '(?=[\s_\-/\d]|$)'
+            if ($searchSpace -match $pattern) {
+                return $true
+            }
+        }
+        # Try progressively shorter forms by stripping common prefixes
+        # e.g., "azure-resourcemanager-containerservice" -> "resourcemanager-containerservice" -> "containerservice"
+        $shortForms = @()
+        $current = $artifactLower
+        foreach ($prefix in @('azure-', 'resourcemanager-', 'resourcemanager+', 'security-', 'communication-')) {
+            if ($current.StartsWith($prefix)) {
+                $current = $current.Substring($prefix.Length)
+                if ($current.Length -gt 4) { $shortForms += $current }
+            }
+        }
+        foreach ($short in $shortForms) {
+            $pattern = [regex]::Escape($short) + '(?=[\s_\-/\d]|$)'
+            if ($searchSpace -match $pattern) {
+                return $true
+            }
         }
     }
     
@@ -356,7 +396,8 @@ Write-Host "  Release branch PRs found: $($releasePRs.Count)" -ForegroundColor W
 Write-Host "  Hotfix releases identified: $($hotfixReleases.Count)" -ForegroundColor Yellow
 Write-Host ""
 
-if ($hotfixReleases.Count -eq 0) {
+$unmatchedPRCount = ($releasePRs | Where-Object { -not $matchedPRs.ContainsKey($_.number) }).Count
+if ($hotfixReleases.Count -eq 0 -and $unmatchedPRCount -eq 0) {
     Write-Host "No hotfix releases found." -ForegroundColor Green
     return
 }
@@ -365,7 +406,9 @@ if ($hotfixReleases.Count -eq 0) {
 $hotfixReleases = $hotfixReleases | Sort-Object PublishedAt -Descending
 
 # Display summary table
-$hotfixReleases | Format-Table -AutoSize Tag, @{N='Published';E={([datetime]$_.PublishedAt).ToString('yyyy-MM-dd')}}, BranchName, PRNumber
+if ($hotfixReleases.Count -gt 0) {
+    $hotfixReleases | Format-Table -AutoSize Tag, @{N='Published';E={([datetime]$_.PublishedAt).ToString('yyyy-MM-dd')}}, BranchName, PRNumber
+}
 
 # Generate markdown report - merged list with PR as primary key
 $reportLines = @()
