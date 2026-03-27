@@ -314,7 +314,7 @@ $hotfixReleases = $hotfixReleases | Sort-Object PublishedAt -Descending
 # Display summary table
 $hotfixReleases | Format-Table -AutoSize Tag, @{N='Published';E={([datetime]$_.PublishedAt).ToString('yyyy-MM-dd')}}, BranchName, PRNumber
 
-# Generate markdown report
+# Generate markdown report - merged list with PR as primary key
 $reportLines = @()
 $reportLines += "# Hotfix Releases Report"
 $reportLines += ""
@@ -322,45 +322,63 @@ $reportLines += "**Repository:** [$Repo](https://github.com/$Repo)"
 $reportLines += "**Date Range:** $cutoffDate to $(Get-Date -Format 'yyyy-MM-dd')"
 $reportLines += "**Total Releases in Period:** $($allReleases.Count)"  
 $reportLines += "**Release Branch PRs Found:** $($releasePRs.Count)"
-$reportLines += "**Hotfix Releases Identified:** $($hotfixReleases.Count)"
+$reportLines += "**Hotfix Releases Matched:** $($hotfixReleases.Count)"
 $reportLines += ""
 $reportLines += "## Method"
 $reportLines += ""
 $reportLines += "A release is classified as a **hotfix** if it was published through a PR from a ``release/`` branch."
 $reportLines += "This indicates the release was prepared on a branch rather than directly on ``main``."
 $reportLines += ""
-$reportLines += "## Hotfix Release List"
+$reportLines += "## Release Branch Activity"
 $reportLines += ""
-$reportLines += "| # | Package/Tag | Published | Release Branch | PR |"
-$reportLines += "|---|-------------|-----------|----------------|-----|"
+$reportLines += "| # | PR | Release Branch | Package/Tag | Published |"
+$reportLines += "|---|-----|----------------|-------------|-----------|"
 
-$i = 0
+# Build merged list: group hotfix releases by PR, then add unmatched PRs
+$unmatchedPRs = $releasePRs | Where-Object { -not $matchedPRs.ContainsKey($_.number) }
+
+# Collect all rows: each hotfix release is a row, each unmatched PR is a row
+$allRows = @()
+
 foreach ($hf in $hotfixReleases) {
-    $i++
-    $pubDate = ([datetime]$hf.PublishedAt).ToString("yyyy-MM-dd")
-    $tagLink = "[$($hf.Tag)]($($hf.ReleaseUrl))"
-    $prLink = "[#$($hf.PRNumber)]($($hf.PRUrl))"
-    $reportLines += "| $i | $tagLink | $pubDate | ``$($hf.BranchName)`` | $prLink |"
+    $allRows += [PSCustomObject]@{
+        SortDate   = [datetime]$hf.PublishedAt
+        PRNumber   = $hf.PRNumber
+        PRUrl      = $hf.PRUrl
+        BranchName = $hf.BranchName
+        Tag        = $hf.Tag
+        ReleaseUrl = $hf.ReleaseUrl
+        Published  = ([datetime]$hf.PublishedAt).ToString("yyyy-MM-dd")
+    }
 }
 
-$reportLines += ""
-
-# Show unmatched PRs
-$unmatchedPRs = $releasePRs | Where-Object { -not $matchedPRs.ContainsKey($_.number) }
-if ($unmatchedPRs.Count -gt 0) {
-    $reportLines += "## Unmatched Release Branch PRs"
-    $reportLines += ""
-    $reportLines += "These PRs merged from release branches but no corresponding release was found within the expected time window."
-    $reportLines += "They may require manual review:"
-    $reportLines += ""
-    $reportLines += "| PR | Branch | Title | Merged |"
-    $reportLines += "|-----|--------|-------|--------|"
-    foreach ($pr in $unmatchedPRs) {
-        $prLink = "[#$($pr.number)](https://github.com/$Repo/pull/$($pr.number))"
-        $mergedDate = ([datetime]$pr.mergedAt).ToString("yyyy-MM-dd")
-        $reportLines += "| $prLink | ``$($pr.headRefName)`` | $($pr.title) | $mergedDate |"
+foreach ($pr in $unmatchedPRs) {
+    $allRows += [PSCustomObject]@{
+        SortDate   = [datetime]$pr.mergedAt
+        PRNumber   = $pr.number
+        PRUrl      = "https://github.com/$Repo/pull/$($pr.number)"
+        BranchName = $pr.headRefName
+        Tag        = $null
+        ReleaseUrl = $null
+        Published  = $null
     }
-    $reportLines += ""
+}
+
+# Sort by date descending
+$allRows = $allRows | Sort-Object SortDate -Descending
+
+$i = 0
+foreach ($row in $allRows) {
+    $i++
+    $prLink = "[#$($row.PRNumber)]($($row.PRUrl))"
+    if ($row.Tag) {
+        $tagLink = "[$($row.Tag)]($($row.ReleaseUrl))"
+        $pubDate = $row.Published
+    } else {
+        $tagLink = ""
+        $pubDate = ""
+    }
+    $reportLines += "| $i | $prLink | ``$($row.BranchName)`` | $tagLink | $pubDate |"
 }
 
 $reportLines += "---"
